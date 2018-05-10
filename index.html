@@ -207,12 +207,11 @@ $(document).ready(function($) {
     if (response.table.length <= 1) {
       // 運行時間外.
       $('#results TBODY').append(
-        $('<tr><td>運行終了</td><td></td><td>運行終了</td><td></td></tr>')
+        $('<tr><td>運行終了</td><td></td><td>運行終了</td><td></td><td></td></tr>')
       );
       return;
     }
 
-//todo wip
     const indexMap = {};
     for (let i = 0; i < response.table[0].length; i++) {
       if (response.table[0][i] == '時刻表') {
