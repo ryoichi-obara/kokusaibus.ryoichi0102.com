@@ -29,6 +29,9 @@
       font-weight: bold;
     }
 
+    .display-none {
+      display: none;
+    }
     .hurry {
       color: red;
     }
@@ -49,13 +52,20 @@
     </div>
   </div>
 
-  <h4>公式情報 <span id="connect_status"></span></h4>
+  <h4>
+    公式情報との接続
+    <span id="connect_status">
+      <span class="display-none ok glyphicon glyphicon-transfer"  >OK</span>
+      <span class="display-none ng glyphicon glyphicon-minus-sign">NG</span>
+    </span>
+  </h4>
 
   <div>
     <table id="results" class="table table-striped table-bordered table-hover table-condensed">
       <thead>
         <th>到着予定</th>
         <th>時刻表</th>
+        <th>【系統】行き先</th>
         <th>運行状況</th>
         <th>車両形態</th>
       </thead>
@@ -65,7 +75,7 @@
   </div>
 
   <div>
-    現在時刻 <span id="current_time"></span>
+    現在時刻 <span id="current_time"></span><br />
   </div>
 
   <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
@@ -78,6 +88,30 @@
   <script>
   (adsbygoogle = window.adsbygoogle || []).push({});
   </script>
+
+  <hr />
+
+  <div>
+    サイト改善情報
+    <ul>
+      <li>文字化けを修正しました。</li>
+    </ul>
+  </div>
+
+  <hr />
+
+  <div>
+    ご注意
+    <ul>
+      <li>この情報は公式のリアルタイム情報( <a id="origin_url" target="_blank"></a> )から<span id="origin_updated"></span>の情報を取得したものを加工して表示しています。万が一、本サイトに不具合が生じている場合は公式の情報を参考にして下さい。</li>
+      <li>本サイトのカウントダウン表示は、公式のリアルタイム情報を元にしているため交通状況により、1分間隔毎に上下することがあります。ご乗車の際には余裕をもってお待ち下さい。</li>
+      <li>運行状況が「※」表示の便は、発信機未装備車両か位置問合せ中のため、時刻表を表示しております。</li>
+      <li>当該停留所の時刻表に対し、現在の時刻から60分以内に通過する予定のダイヤを表示しています。</li>
+      <li>現在の時刻から60分以内に到着する予定がない場合は、直近の1件を表示しています。</li>
+      <li>目的地予測は、直近の運行実績等からの予測です。</li>
+      <li>到着予測時刻の早い順に表示されています。</li>
+    </ul>
+  </div>
 </div>
 </main>
 <footer>
@@ -100,7 +134,7 @@
 <script type="text/javascript">
 $(document).ready(function($) {
 
-  var busstopLoc = getUrlParameter('loc');
+  const busstopLoc = getUrlParameter('loc');
   // console.debug(busstopLoc);
   var busstopName = busstopLoc; // TODO production, convert to logical name.
   $('#name_of_busstop').text(busstopName);
@@ -135,65 +169,90 @@ $(document).ready(function($) {
   /**
    * タイムテーブルの取得と更新.
    */
-  var refleshTimetable = (function() {
+  const refleshTimetable = (function() {
     // // 30,000msec遅らせて再取得.
     // $.wait(30000).done(function() {
     //   refleshTimetable();
     // });
 
     $.ajax({
-      beforeSend: function(xhr){
-        xhr.overrideMimeType('text/html;charset=Shift_JIS');
-      },
       type: 'GET',
       url: 'https://uf520iamq6.execute-api.ap-northeast-1.amazonaws.com/prod/' + busstopLoc,
-    }).done(function (data) {
+    }).done((data) => {
       // console.debug(data);
-      $('#connect_status').empty().append('<span class="glyphicon glyphicon-transfer">connected.</span>');
+      $('#connect_status .ng').hide();
+      $('#connect_status .ok').show();
       refleshContents(data);
-    }).fail(function (e) {
-      $('#connect_status').empty().append('<span class="glyphicon glyphicon-minus-sign">disconnected</span>');
+    }).fail((data) => {
+      $('#connect_status .ok').hide();
+      $('#connect_status .ng').show();
       console.error(e);
     });
   });
 
   /**
    * 取得したコンテンツによる表示の最新化.
-   * @param {string} kokusaiHtml - 取得コンテンツ
+   * @param {object} response - 取得コンテンツ
    */
-  var refleshContents = (function(kokusaiHtml) {
+  const refleshContents = (response) => {
+
+    console.log(response);
+    $('#origin_url').attr('href', response.originUrl).text(response.originUrl);
+    $('#origin_updated').text(response.originUpdated);
 
     // リフレッシュするエリアをまずはクリア.
     $('#results TBODY').empty();
 
     // 1行目はヘッダなので読み飛ばす.
-    $tr = $(kokusaiHtml).find('#mainContents TABLE.R_Table TR:gt(0)');
-    // console.debug($tr);
-    if ($tr.length == 0) {
+    if (response.table.length <= 1) {
       // 運行時間外.
       $('#results TBODY').append(
-        $('<TR><<td>運行終了</td><td></td><td>運行終了</td><td></td></tr>')
+        $('<tr><td>運行終了</td><td></td><td>運行終了</td><td></td></tr>')
       );
       return;
     }
 
-    // 行の書き出し.
-    $tr.each(function(index, elem) {
-      var $elem = $(elem);
-      // console.debug($elem);
-      var sta = $elem.find('td').eq(0).text();
-      var $newTR = $('<TR>').append(
-        $('<td>').append($elem.find('td').eq(1).text()),
-        $('<td>').append(sta),
-        $('<td>').append($elem.find('td').eq(5).text()),
-        $('<td>').append($elem.find('td').eq(4).text())
-      );
-      if (sta == targetBusTime) {
-        $newTR.addClass('info');
+//todo wip
+    const indexMap = {};
+    for (let i = 0; i < response.table[0].length; i++) {
+      if (response.table[0][i] == '時刻表') {
+        indexMap['sta'] = i;
+      } else if (response.table[0][i] == '到着予測') {
+        indexMap['eta'] = i;
+      } else if (response.table[0][i] == 'のりば') {
+        indexMap['busstop'] = i;
+      } else if (response.table[0][i] == '【系統】行き先') {
+        indexMap['dest'] = i;
+      } else if (response.table[0][i] == '車両') {
+        indexMap['type'] = i;
+      } else if (response.table[0][i] == '運行状況') {
+        indexMap['status'] = i;
       }
+    }
+
+    for (let i = 1; i < response.table.length; i++) {
+      const $newTR = $('<tr>').append(
+        $('<td>').append(response.table[i][indexMap['eta']]),
+        $('<td>').append(response.table[i][indexMap['sta']]),
+        $('<td>').append(response.table[i][indexMap['dest']]),
+        $('<td>').append(response.table[i][indexMap['status']]),
+        $('<td>').append(response.table[i][indexMap['type']])
+      );
       $('#results TBODY').append($newTR);
-    });
-  });
+    }
+      // var sta = $elem.find('td').eq(0).text();
+      // var $newTR = $('<TR>').append(
+      //   $('<td>').append($elem.find('td').eq(1).text()),
+      //   $('<td>').append(sta),
+      //   $('<td>').append($elem.find('td').eq(5).text()),
+      //   $('<td>').append($elem.find('td').eq(4).text())
+      // );
+      // if (sta == targetBusTime) {
+      //   $newTR.addClass('info');
+      // }
+      // $('#results TBODY').append($newTR);
+  };
+
   // 初回実行. (更新の継続は関数内で.)
   if (busstopLoc != undefined && busstopLoc != '') {
     refleshTimetable();
@@ -231,10 +290,10 @@ $(document).ready(function($) {
       }
     }
     if (eta == undefined) {
-      console.debug('not found ETA.');
+      // console.debug('not found ETA.');
       return;
     } else if (eta == '運行終了') {
-      console.debug('Over.');
+      // console.debug('Over.');
       return;
     }
     // console.debug(eta);
