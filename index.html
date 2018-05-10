@@ -231,26 +231,19 @@ $(document).ready(function($) {
     }
 
     for (let i = 1; i < response.table.length; i++) {
+      const sta = response.table[i][indexMap['sta']];
       const $newTR = $('<tr>').append(
         $('<td>').append(response.table[i][indexMap['eta']]),
-        $('<td>').append(response.table[i][indexMap['sta']]),
+        $('<td>').append(sta),
         $('<td>').append(response.table[i][indexMap['dest']]),
         $('<td>').append(response.table[i][indexMap['status']]),
         $('<td>').append(response.table[i][indexMap['type']])
       );
+      if (sta == targetBusTime) {
+        $newTR.addClass('info');
+      }
       $('#results TBODY').append($newTR);
     }
-      // var sta = $elem.find('td').eq(0).text();
-      // var $newTR = $('<TR>').append(
-      //   $('<td>').append($elem.find('td').eq(1).text()),
-      //   $('<td>').append(sta),
-      //   $('<td>').append($elem.find('td').eq(5).text()),
-      //   $('<td>').append($elem.find('td').eq(4).text())
-      // );
-      // if (sta == targetBusTime) {
-      //   $newTR.addClass('info');
-      // }
-      // $('#results TBODY').append($newTR);
   };
 
   // 初回実行. (更新の継続は関数内で.)
