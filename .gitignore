@@ -1,5 +1,6 @@
 
 aws-s3-sync.command
+aws-s3-sync.sh
 
 .DS_Store
 .AppleDouble
