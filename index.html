@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="keywords" content="国際興業バス,kokusaibus,時刻表,リアルタイム">
+  <meta name="description" content="国際興業バスのリアルタイム時刻表を表示して、到着時刻をカウントダウンします.">
+  <meta name="author" content="ryoichi-obara">
+  <title>国際興業バス リアルタイム時刻表 カウントダウン</title>
+
+  <!-- <link rel="icon" href="./favicon.ico"> -->
+  <link href="./css/bootstrap.min.css" rel="stylesheet">
+  <link href="./css/bootstrap-theme.min.css" rel="stylesheet">
+
+  <style type="text/css">
+    .n46 {
+      color: white;
+      background-color: #7d2982 !important;
+    }
+    .n46:hover, .n46:focus {
+      border-color: #7d2982;
+      color: #7d2982;
+      background-color: white !important;
+    }
+
+    #remain {
+      font-size: 500%;
+      font-weight: bold;
+    }
+
+    .hurry {
+      color: red;
+    }
+    .soon {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+<main>
+<div id="main" class="container">
+
+  <h4 id="name_of_busstop">Kokusaibus Scraping</h4>
+
+  <div class="row">
+    <div class="col-xs-12">
+      あと <span id="remain"></span> で到着します。
+    </div>
+  </div>
+
+  <h4>公式情報 <span id="connect_status"></span></h4>
+
+  <div>
+    <table id="results" class="table table-striped table-bordered table-hover table-condensed">
+      <thead>
+        <th>到着予定</th>
+        <th>時刻表</th>
+        <th>運行状況</th>
+        <th>車両形態</th>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+
+  <div>
+    現在時刻 <span id="current_time"></span>
+  </div>
+
+  <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+  <!-- kokusaibus.ryoichi0102.com -->
+  <ins class="adsbygoogle"
+    style="display:block"
+    data-ad-client="ca-pub-2746403253995461"
+    data-ad-slot="5181473212"
+    data-ad-format="auto"></ins>
+  <script>
+  (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+</div>
+</main>
+<footer>
+
+</footer>
+<!-- Placed at the end of the document so the pages load faster -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-17737897-10"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-17737897-10');
+</script>
+<script src="./js/jquery-1.12.4.min.js"></script>
+<script src="./js/bootstrap.min.js"></script>
+<script src="./js/numeral.js/numeral.min.js"></script>
+<script src="./js/kokusaibus.js"></script>
+<script type="text/javascript">
+$(document).ready(function($) {
+
+  var busstopLoc = getUrlParameter('loc');
+  // console.debug(busstopLoc);
+  var busstopName = busstopLoc; // TODO production, convert to logical name.
+  $('#name_of_busstop').text(busstopName);
+  var latestRefleshMin = undefined;
+
+  var targetBusTime = undefined;
+  $('#results TBODY').on('click', 'TR', function() {
+    $('#results TBODY TR').removeClass('info');
+    var $this = $(this);
+    targetBusTime = $this.addClass('info').find('TD:eq(1)').text();
+    console.log('Set target ' + targetBusTime);
+
+    countdown(true);
+  });
+
+  /**
+   * Wait function for deferred jQuery
+   * @param {number} msec - ミリ秒
+   * @see http://qiita.com/deep_blue_ao/items/3b0bb69f16a7381d9871
+   */
+  $.wait = (function(msec) {
+    // Deferredのインスタンスを作成
+
+    var d = new $.Deferred;
+    setTimeout(function(){
+      // 指定時間経過後にresolveしてdeferredを解決する
+      d.resolve(msec);
+    }, msec);
+    return d.promise();
+  });
+
+  /**
+   * タイムテーブルの取得と更新.
+   */
+  var refleshTimetable = (function() {
+    // // 30,000msec遅らせて再取得.
+    // $.wait(30000).done(function() {
+    //   refleshTimetable();
+    // });
+
+    $.ajax({
+      beforeSend: function(xhr){
+        xhr.overrideMimeType('text/html;charset=Shift_JIS');
+      },
+      type: 'GET',
+      url: 'https://uf520iamq6.execute-api.ap-northeast-1.amazonaws.com/prod/' + busstopLoc,
+    }).done(function (data) {
+      // console.debug(data);
+      $('#connect_status').empty().append('<span class="glyphicon glyphicon-transfer">connected.</span>');
+      refleshContents(data);
+    }).fail(function (e) {
+      $('#connect_status').empty().append('<span class="glyphicon glyphicon-minus-sign">disconnected</span>');
+      console.error(e);
+    });
+  });
+
+  /**
+   * 取得したコンテンツによる表示の最新化.
+   * @param {string} kokusaiHtml - 取得コンテンツ
+   */
+  var refleshContents = (function(kokusaiHtml) {
+
+    // リフレッシュするエリアをまずはクリア.
+    $('#results TBODY').empty();
+
+    // 1行目はヘッダなので読み飛ばす.
+    $tr = $(kokusaiHtml).find('#mainContents TABLE.R_Table TR:gt(0)');
+    // console.debug($tr);
+    if ($tr.length == 0) {
+      // 運行時間外.
+      $('#results TBODY').append(
+        $('<TR><<td>運行終了</td><td></td><td>運行終了</td><td></td></tr>')
+      );
+      return;
+    }
+
+    // 行の書き出し.
+    $tr.each(function(index, elem) {
+      var $elem = $(elem);
+      // console.debug($elem);
+      var sta = $elem.find('td').eq(0).text();
+      var $newTR = $('<TR>').append(
+        $('<td>').append($elem.find('td').eq(1).text()),
+        $('<td>').append(sta),
+        $('<td>').append($elem.find('td').eq(5).text()),
+        $('<td>').append($elem.find('td').eq(4).text())
+      );
+      if (sta == targetBusTime) {
+        $newTR.addClass('info');
+      }
+      $('#results TBODY').append($newTR);
+    });
+  });
+  // 初回実行. (更新の継続は関数内で.)
+  if (busstopLoc != undefined && busstopLoc != '') {
+    refleshTimetable();
+  }
+
+  /**
+   * カウントダウン表示の更新.
+   * @param {boolean} once - true:一度だけ実行, false:タイマー実行による継続.
+   */
+  var countdown = (function(once) {
+
+    if (!once) {
+      // 900msec遅らせて再計算.
+      $.wait(900).done(function() {
+        countdown();
+      });
+    }
+
+    // Target ETAの決定.
+
+    var eta = undefined;
+    if (targetBusTime != undefined) {
+      $('#results TBODY TR').each(function (index, elem) {
+        $elem = $(elem);
+        if (targetBusTime == $elem.find('TD:eq(1)').text()) {
+          eta = $elem.find('TD:eq(0)').text();
+        }
+      });
+    }
+    // console.debug(eta);
+    if (eta == undefined) {
+      var $etaTD = $('#results TBODY TR:eq(0) TD:eq(0)');
+      if ($etaTD.length != 0) {
+        eta = $etaTD.text();
+      }
+    }
+    if (eta == undefined) {
+      console.debug('not found ETA.');
+      return;
+    } else if (eta == '運行終了') {
+      console.debug('Over.');
+      return;
+    }
+    // console.debug(eta);
+
+    // カウントダウンの計算.
+
+    var now = new Date();
+    var nowString = now.toLocaleString();
+
+    $('#current_time').text(nowString);
+    if (latestRefleshMin != now.getMinutes()) {
+      latestRefleshMin = now.getMinutes();
+      refleshTimetable();
+    }
+
+    var dateString = nowString.substr(0, nowString.indexOf(' ')) + ' ' + eta + ':00+09:00';
+    // console.debug(dateString);
+    var eta = Date.parse(dateString);
+    // console.debug(eta);           // [msec]
+    // console.debug(now.getTime()); // [msec]
+    var gapSec = Math.floor((eta - now) / 1000) + 1;
+    // console.debug(gapSec);
+    if (gapSec < 0) {
+      gapSec = 0;
+    }
+    var remain = numeral(gapSec).format('00:00');
+    // console.debug(remain);
+
+    if (gapSec <= 4 * 60) { 
+      $('#remain').text(remain).addClass('hurry').removeClass('soon');
+    } else if (gapSec <= 6 * 60) { 
+      $('#remain').text(remain).removeClass('hurry').addClass('soon');
+    } else {
+      $('#remain').text(remain).removeClass('hurry').removeClass('soon');
+    }
+  });
+
+  // 初回実行. (更新の継続は関数内で.)
+  if (busstopLoc != undefined && busstopLoc != '') {
+    countdown();
+  }
+
+});
+</script>
+</body>
+</html>
