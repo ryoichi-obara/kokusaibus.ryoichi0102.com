@@ -2,6 +2,8 @@
 aws-s3-sync.command
 aws-s3-sync.sh
 
+.vscode
+
 .DS_Store
 .AppleDouble
 .LSOverride
