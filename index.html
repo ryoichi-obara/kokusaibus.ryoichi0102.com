@@ -52,13 +52,13 @@
     </div>
   </div>
 
-  <h4>
+  <h5>
     公式情報との接続
     <span id="connect_status">
       <span class="display-none ok glyphicon glyphicon-transfer"  >OK</span>
       <span class="display-none ng glyphicon glyphicon-minus-sign">NG</span>
     </span>
-  </h4>
+  </h5>
 
   <div>
     <table id="results" class="table table-striped table-bordered table-hover table-condensed">
@@ -136,11 +136,9 @@ $(document).ready(function($) {
 
   const busstopLoc = getUrlParameter('loc');
   // console.debug(busstopLoc);
-  var busstopName = busstopLoc; // TODO production, convert to logical name.
-  $('#name_of_busstop').text(busstopName);
-  var latestRefleshMin = undefined;
+  let latestRefleshMin = undefined;
 
-  var targetBusTime = undefined;
+  let targetBusTime = undefined;
   $('#results TBODY').on('click', 'TR', function() {
     $('#results TBODY TR').removeClass('info');
     var $this = $(this);
@@ -197,6 +195,7 @@ $(document).ready(function($) {
   const refleshContents = (response) => {
 
     console.log(response);
+    $('#name_of_busstop').text(response.busStopName);
     $('#origin_url').attr('href', response.originUrl).text(response.originUrl);
     $('#origin_updated').text(response.originUpdated);
 
