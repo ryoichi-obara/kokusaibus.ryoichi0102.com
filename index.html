@@ -134,42 +134,45 @@
 <script src="./js/numeral.js/numeral.min.js"></script>
 <script src="./js/kokusaibus.js"></script>
 <script type="text/javascript">
-$(document).ready(function($) {
+$(document).ready(($) => {
 
   const busstopLoc = getUrlParameter('loc');
   // console.debug(busstopLoc);
   let latestRefleshMin = undefined;
 
   let targetBusTime = undefined;
-  $('#results TBODY').on('click', 'TR', function() {
+  $('#results TBODY').on('click', 'TR', (event) => {
+    // Clear other selection.
     $('#results TBODY TR').removeClass('info');
-    var $this = $(this);
-    targetBusTime = $this.addClass('info').find('TD:eq(1)').text();
-    console.log('Set target ' + targetBusTime);
+    // Identify target TR line.
+    const $tr = $(event.target).closest('TR');
+    // Keep ETA.
+    targetBusTime = $tr.addClass('info').find('TD:eq(1)').text();
+    // console.log('Set target ' + targetBusTime);
 
+    // Reflesh countdown timer at only once.
     countdown(true);
   });
 
   /**
-   * Wait function for deferred jQuery
-   * @param {number} msec - ミリ秒
+   * Wait function for deferred jQuery.
+   * @param {number} msec - milliseconds
    * @see http://qiita.com/deep_blue_ao/items/3b0bb69f16a7381d9871
    */
-  $.wait = (function(msec) {
-    // Deferredのインスタンスを作成
-
-    var d = new $.Deferred;
-    setTimeout(function(){
+  $.wait = (msec) => {
+    // Instantiate deferred.
+    const d = new $.Deferred;
+    setTimeout(() => {
       // 指定時間経過後にresolveしてdeferredを解決する
       d.resolve(msec);
     }, msec);
     return d.promise();
-  });
+  };
 
   /**
    * タイムテーブルの取得と更新.
    */
-  const refleshTimetable = (function() {
+  const refleshTimetable = () => {
     // // 30,000msec遅らせて再取得.
     // $.wait(30000).done(function() {
     //   refleshTimetable();
@@ -177,7 +180,7 @@ $(document).ready(function($) {
 
     $.ajax({
       type: 'GET',
-      url: 'https://uf520iamq6.execute-api.ap-northeast-1.amazonaws.com/prod/' + busstopLoc,
+      url: `https://uf520iamq6.execute-api.ap-northeast-1.amazonaws.com/prod/${busstopLoc}`,
     }).done((data) => {
       // console.debug(data);
       $('#connect_status .ng').hide();
@@ -188,15 +191,15 @@ $(document).ready(function($) {
       $('#connect_status .ng').show();
       console.error(e);
     });
-  });
+  };
 
   /**
    * 取得したコンテンツによる表示の最新化.
-   * @param {object} response - 取得コンテンツ
+   * @param {object} response
    */
   const refleshContents = (response) => {
 
-    console.log(response);
+    // console.log(response);
     $('#name_of_busstop').text(response.busStopName);
     $('#origin_url').attr('href', response.originUrl).text(response.originUrl);
     $('#origin_updated').text(response.originUpdated);
@@ -255,7 +258,7 @@ $(document).ready(function($) {
    * カウントダウン表示の更新.
    * @param {boolean} once - true:一度だけ実行, false:タイマー実行による継続.
    */
-  var countdown = (function(once) {
+  const countdown = (once) => {
 
     if (!once) {
       // 900msec遅らせて再計算.
@@ -266,9 +269,9 @@ $(document).ready(function($) {
 
     // Target ETAの決定.
 
-    var eta = undefined;
+    let eta = undefined;
     if (targetBusTime != undefined) {
-      $('#results TBODY TR').each(function (index, elem) {
+      $('#results TBODY TR').each((index, elem) => {
         $elem = $(elem);
         if (targetBusTime == $elem.find('TD:eq(1)').text()) {
           eta = $elem.find('TD:eq(0)').text();
@@ -277,7 +280,7 @@ $(document).ready(function($) {
     }
     // console.debug(eta);
     if (eta == undefined) {
-      var $etaTD = $('#results TBODY TR:eq(0) TD:eq(0)');
+      const $etaTD = $('#results TBODY TR:eq(0) TD:eq(0)');
       if ($etaTD.length != 0) {
         eta = $etaTD.text();
       }
@@ -293,8 +296,8 @@ $(document).ready(function($) {
 
     // カウントダウンの計算.
 
-    var now = new Date();
-    var nowString = now.toLocaleString();
+    const now = new Date();
+    const nowString = now.toLocaleString();
 
     $('#current_time').text(nowString);
     if (latestRefleshMin != now.getMinutes()) {
@@ -302,17 +305,17 @@ $(document).ready(function($) {
       refleshTimetable();
     }
 
-    var dateString = nowString.substr(0, nowString.indexOf(' ')) + ' ' + eta + ':00+09:00';
+    const dateString = nowString.substr(0, nowString.indexOf(' ')) + ' ' + eta + ':00+09:00';
     // console.debug(dateString);
-    var eta = Date.parse(dateString);
-    // console.debug(eta);           // [msec]
+    const etaDatetime = Date.parse(dateString);
+    // console.debug(etaDatetime);           // [msec]
     // console.debug(now.getTime()); // [msec]
-    var gapSec = Math.floor((eta - now) / 1000) + 1;
+    let gapSec = Math.floor((etaDatetime - now) / 1000) + 1;
     // console.debug(gapSec);
     if (gapSec < 0) {
       gapSec = 0;
     }
-    var remain = numeral(gapSec).format('00:00');
+    const remain = numeral(gapSec).format('00:00');
     // console.debug(remain);
 
     if (gapSec <= 4 * 60) { 
@@ -322,7 +325,7 @@ $(document).ready(function($) {
     } else {
       $('#remain').text(remain).removeClass('hurry').removeClass('soon');
     }
-  });
+  };
 
   // 初回実行. (更新の継続は関数内で.)
   if (busstopLoc) {
