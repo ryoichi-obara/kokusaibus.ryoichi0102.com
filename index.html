@@ -247,7 +247,7 @@ $(document).ready(function($) {
   };
 
   // 初回実行. (更新の継続は関数内で.)
-  if (busstopLoc != undefined && busstopLoc != '') {
+  if (busstopLoc) {
     refleshTimetable();
   }
 
@@ -325,7 +325,7 @@ $(document).ready(function($) {
   });
 
   // 初回実行. (更新の継続は関数内で.)
-  if (busstopLoc != undefined && busstopLoc != '') {
+  if (busstopLoc) {
     countdown();
   }
 
