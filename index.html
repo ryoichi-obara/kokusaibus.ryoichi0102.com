@@ -94,6 +94,7 @@
   <div>
     サイト改善情報
     <ul>
+      <li>初期表示の速度の改善を行いました。</li>
       <li>停留所名の表示に対応しました。</li>
       <li>レイアウトの調整を行いました。</li>
       <li>文字化けを修正しました。</li>
@@ -154,33 +155,23 @@ $(document).ready(($) => {
     countdown(true);
   });
 
-  /**
-   * Wait function for deferred jQuery.
-   * @param {number} msec - milliseconds
-   * @see http://qiita.com/deep_blue_ao/items/3b0bb69f16a7381d9871
-   */
-  $.wait = (msec) => {
-    // Instantiate deferred.
-    const d = new $.Deferred;
-    setTimeout(() => {
-      // 指定時間経過後にresolveしてdeferredを解決する
-      d.resolve(msec);
-    }, msec);
-    return d.promise();
-  };
+  // Enable $.wait().
+  addWaitFeature($);
 
   /**
    * タイムテーブルの取得と更新.
+   * @param {string} url - 初期表示時は、S3にキャッシュされているデータを取得するLambdaの方が早い.
    */
-  const refleshTimetable = () => {
+  const refleshTimetable = (url) => {
     // // 30,000msec遅らせて再取得.
     // $.wait(30000).done(function() {
     //   refleshTimetable();
     // });
+    const fetchUrl = url ? `${url}/${busstopLoc}` : `https://uf520iamq6.execute-api.ap-northeast-1.amazonaws.com/prod/${busstopLoc}`;
 
     $.ajax({
       type: 'GET',
-      url: `https://uf520iamq6.execute-api.ap-northeast-1.amazonaws.com/prod/${busstopLoc}`,
+      url: fetchUrl,
     }).done((data) => {
       // console.debug(data);
       $('#connect_status .ng').hide();
@@ -251,7 +242,7 @@ $(document).ready(($) => {
 
   // 初回実行. (更新の継続は関数内で.)
   if (busstopLoc) {
-    refleshTimetable();
+    refleshTimetable('https://87cwr0chq1.execute-api.ap-northeast-1.amazonaws.com/prod');
   }
 
   /**
