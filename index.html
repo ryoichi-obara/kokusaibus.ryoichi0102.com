@@ -167,7 +167,7 @@ $(document).ready(($) => {
     // $.wait(30000).done(function() {
     //   refleshTimetable();
     // });
-    const fetchUrl = url ? `${url}/${busstopLoc}` : `https://uf520iamq6.execute-api.ap-northeast-1.amazonaws.com/prod/${busstopLoc}`;
+    const fetchUrl = url ? `${url}/${busstopLoc}` : `https://87cwr0chq1.execute-api.ap-northeast-1.amazonaws.com/prod/scraper/${busstopLoc}`;
 
     $.ajax({
       type: 'GET',
@@ -242,7 +242,7 @@ $(document).ready(($) => {
 
   // 初回実行. (更新の継続は関数内で.)
   if (busstopLoc) {
-    refleshTimetable('https://87cwr0chq1.execute-api.ap-northeast-1.amazonaws.com/prod');
+    refleshTimetable('https://87cwr0chq1.execute-api.ap-northeast-1.amazonaws.com/prod/query');
   }
 
   /**
